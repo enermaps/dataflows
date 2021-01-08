@@ -1,4 +1,5 @@
 import csv
+from osgeo import gdal
 import json
 import os
 import isodate
@@ -235,3 +236,36 @@ class GeoJSONFormat(JSONFormat):
     def finalize_file(self):
         super(GeoJSONFormat, self).finalize_file()
         self.writer.write('}')
+
+class GeoTIFFFormat(FileFormat):
+    PYTHON_DIALECT = {}
+    NULL_VALUE = None
+    SERIALIZERS = {}
+
+
+    def __init__(self, writer, schema, temporal_format_property=None, default_serializer=str):
+        pass
+
+
+    @classmethod
+    def prepare_resource(cls, resource):
+        descriptor = resource.descriptor
+        basename, _ = os.path.splitext(resource.source)
+        descriptor['format'] = 'GeoTIFF'
+        descriptor['mediatype'] = 'image/tiff'
+
+
+    def __transform_row(self, row):
+        pass
+
+    def __transform_value(self, value, field):
+        pass
+
+    def write_transformed_row(self, *_):
+        pass
+
+    def write_row(self, row):
+        pass
+
+    def finalize_file(self):
+        super(GeoTIFFFormat, self).finalize_file()

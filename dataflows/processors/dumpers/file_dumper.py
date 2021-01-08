@@ -2,11 +2,12 @@ import os
 import json
 import tempfile
 import hashlib
+from osgeo import gdal, osr
 
 from datapackage import Resource
 
 from .dumper_base import DumperBase
-from .file_formats import CSVFormat, JSONFormat, GeoJSONFormat
+from .file_formats import CSVFormat, JSONFormat, GeoJSONFormat, GeoTIFFFormat
 
 
 class FileDumper(DumperBase):
@@ -17,6 +18,7 @@ class FileDumper(DumperBase):
         self.forced_format = options.get('format', 'csv')
         self.temporal_format_property = options.get('temporal_format_property', None)
         self.use_titles = options.get('use_titles', False)
+        self.projection = options.get('projection', None)
 
     def process_datapackage(self, datapackage):
         datapackage = \
@@ -35,18 +37,22 @@ class FileDumper(DumperBase):
             file_formatter = {
                 'csv': CSVFormat,
                 'json': JSONFormat,
-                'geojson': GeoJSONFormat
+                'geojson': GeoJSONFormat,
+                'geotiff': GeoTIFFFormat,
             }.get(file_format)
             if file_format is not None:
                 self.file_formatters[resource.name] = file_formatter
                 self.file_formatters[resource.name].prepare_resource(resource)
+                if self.projection != None: # Update projection
+                    srs = osr.SpatialReference()
+                    srs.SetFromUserInput(self.projection)
+                    resource.descriptor["epsg"] = srs.GetAuthorityCode(None)
+                    resource.descriptor['proj4'] = srs.ExportToProj4()
                 resource.commit()
                 datapackage.descriptor['resources'][i] = resource.descriptor
-
         return datapackage
 
     def handle_datapackage(self):
-
         # Handle temporal_format_property
         if self.temporal_format_property:
             for resource in self.datapackage.descriptor['resources']:
@@ -104,18 +110,34 @@ class FileDumper(DumperBase):
         self.write_file_to_output(filename, resource.res.source)
         os.unlink(filename)
 
+    def write_raster(self, resource, temp_file):
+        ds = gdal.Open(resource.res.descriptor["source"])
+        driver = gdal.GetDriverByName('GTiff')
+        if self.projection != None:
+            gdal.Warp(temp_file.name,ds,dstSRS=self.projection)
+        else:
+            dst_ds = driver.CreateCopy(temp_file.name, ds, 0 )    
+        self.write_file_to_output(temp_file.name, resource.res.source)
+        return resource
+
+
+
     def process_resource(self, resource):
         if resource.res.name in self.file_formatters:
-            schema = resource.res.schema
+            if self.file_formatters[resource.res.name].__name__ == "GeoTIFFFormat":
+                temp_file = tempfile.NamedTemporaryFile(mode="w+", delete=False, newline='')
+                return self.write_raster(resource, temp_file)
+            else:
+                schema = resource.res.schema
 
-            temp_file = tempfile.NamedTemporaryFile(mode="w+", delete=False, newline='')
-            writer_kwargs = {'use_titles': True} if self.use_titles else {}
-            writer_kwargs['temporal_format_property'] = self.temporal_format_property
-            writer = self.file_formatters[resource.res.name](temp_file, schema, **writer_kwargs)
+                temp_file = tempfile.NamedTemporaryFile(mode="w+", delete=False, newline='')
+                writer_kwargs = {'use_titles': True} if self.use_titles else {}
+                writer_kwargs['temporal_format_property'] = self.temporal_format_property
+                writer = self.file_formatters[resource.res.name](temp_file, schema, **writer_kwargs)
+                return self.rows_processor(resource,
+                                           writer,
+                                           temp_file)
 
-            return self.rows_processor(resource,
-                                       writer,
-                                       temp_file)
         else:
             return resource
 

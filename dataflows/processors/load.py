@@ -13,6 +13,9 @@ from ..base.schema_validator import schema_validator, ignore, drop, raise_except
 from ..helpers.resource_matcher import ResourceMatcher
 
 
+from osgeo import gdal, osr
+
+
 class XMLParser(Parser):
     options = []
 
@@ -208,6 +211,27 @@ class load(DataStreamProcessor):
                         self.resource_descriptors.append(resource.descriptor)
                         self.iterators.append(resource.iter(keyed=True, cast=True))
 
+            # Loading from raster file:
+            if self.options.get('format') == 'raster':
+                path = os.path.basename(self.load_source)
+                path = os.path.splitext(path)[0]
+                descriptor = dict(path=self.name or path,
+                                  profile='raster-data-resource')
+                self.resource_descriptors.append(descriptor)
+                descriptor['name'] = self.name or path
+                descriptor['source'] = self.load_source
+                if 'encoding' in self.options:
+                    descriptor['encoding'] = self.options['encoding']
+                self.options.setdefault('custom_parsers', {}).setdefault('xml', XMLParser)
+                self.options.setdefault('ignore_blank_headers', True)
+                self.options.setdefault('headers', 1)
+                ds = gdal.Open(self.load_source)
+                wkt = ds.GetProjection()
+                proj = osr.SpatialReference(wkt=wkt)
+                # descriptor['wkt'] = ds.GetProjection()
+                descriptor['epsg'] = proj.GetAttrValue('AUTHORITY',1)
+                descriptor['format'] = self.options.get('format', "tif")
+                descriptor['path'] += '.{}'.format("tif")
             # Loading for any other source
             else:
                 path = os.path.basename(self.load_source)
@@ -231,6 +255,8 @@ class load(DataStreamProcessor):
                 schema = Schema().infer(
                     stream.sample, headers=stream.headers,
                     confidence=1, guesser_cls=self.guesser)
+                print("schema",schema)
+                print(descriptor)
                 # restore schema field names to original headers
                 for header, field in zip(stream.headers, schema['fields']):
                     field['name'] = header
@@ -254,6 +280,8 @@ class load(DataStreamProcessor):
                 descriptor['format'] = self.options.get('format', stream.format)
                 descriptor['path'] += '.{}'.format(stream.format)
                 self.iterators.append(stream.iter(keyed=True))
+                print(descriptor)
+                print(self.resource_descriptors)
         dp.descriptor.setdefault('resources', []).extend(self.resource_descriptors)
         return dp
 
@@ -296,13 +324,14 @@ class load(DataStreamProcessor):
     def process_resources(self, resources):
         yield from super(load, self).process_resources(resources)
         for descriptor, it in zip(self.resource_descriptors, self.iterators):
-            if self.extract_missing_values:
-                it = self.missing_values_extractor(it)
-            it = self.caster(descriptor, it)
-            if self.strip:
-                it = self.stripper(it)
-            if self.limit_rows:
-                it = self.limiter(it)
+            if descriptor["profile"] != "raster-data-resource":
+                if self.extract_missing_values:
+                    it = self.missing_values_extractor(it)
+                it = self.caster(descriptor, it)
+                if self.strip:
+                    it = self.stripper(it)
+                if self.limit_rows:
+                    it = self.limiter(it)
             yield it
 
     @staticmethod

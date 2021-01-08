@@ -19,7 +19,6 @@ class DumperBase(DataStreamProcessor):
         self.add_filehash_to_path = options.get('add_filehash_to_path', False)
         self.pretty_descriptor = options.get('pretty_descriptor', True)
         self.schema_validator_options = options.get('validator_options', {})
-
     @staticmethod
     def get_attr(obj, prop, default=None):
         if prop is None:
@@ -66,11 +65,12 @@ class DumperBase(DataStreamProcessor):
 
     def row_counter(self, resource, iterator):
         counter = 0
-        for row in iterator:
-            counter += 1
-            yield row
-        DumperBase.inc_attr(self.datapackage.descriptor, self.datapackage_rowcount, counter)
-        DumperBase.inc_attr(resource.res.descriptor, self.resource_rowcount, counter)
+        if resource.res.descriptor["profile"] != "raster-data-resource":
+            for row in iterator:
+                counter += 1
+                yield row
+            DumperBase.inc_attr(self.datapackage.descriptor, self.datapackage_rowcount, counter)
+            DumperBase.inc_attr(resource.res.descriptor, self.resource_rowcount, counter)
         resource.res.commit()
         self.datapackage.commit()
 

@@ -78,10 +78,9 @@ class DataStreamProcessor:
             self.datapackage = Package(descriptor=copy.deepcopy(datastream.dp.descriptor))
             self.datapackage = self.process_datapackage(self.datapackage)
             self.datapackage.commit()
-
             return DataStream(self.datapackage,
-                            LazyIterator(self.get_iterator(datastream)),
-                            datastream.stats + [self.stats])
+                                LazyIterator(self.get_iterator(datastream)),
+                                datastream.stats + [self.stats])
         except Exception as exception:
             self.raise_exception(exception)
 
