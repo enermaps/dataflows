@@ -38,7 +38,10 @@ pip install -e .
 ## Use
 Within the ```rasterflows``` environment run:
 
-```python test_raster.py```
+```python tests/test_raster.py```
+
+This is a sample test of reprojection of a GeoTIFF file from an online repository.
+
 
 ## TODO
 
