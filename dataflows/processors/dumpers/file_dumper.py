@@ -3,7 +3,7 @@ import json
 import tempfile
 import hashlib
 from osgeo import gdal, osr
-import xarray
+import xarray as xr
 
 from datapackage import Resource
 
@@ -112,19 +112,19 @@ class FileDumper(DumperBase):
         os.unlink(filename)
 
     def write_raster(self, resource, temp_file):
-        print(" hjkb J")
-        print(resource.res.descriptor["source"])
         ds = gdal.Open(resource.res.descriptor["source"])
         driver = gdal.GetDriverByName('GTiff')
-        print(self.projection)
-        try:
-            if self.projection != None:
-                gdal.Warp(temp_file.name,ds,dstSRS=self.projection)
-            else:
-                gdal.Warp(temp_file.name,ds)
-            self.write_file_to_output(temp_file.name, resource.res.source)
-        except:
-            print("GDAL cannnot handle this resource")  
+        if self.projection != None:
+            o = gdal.Warp(temp_file.name,ds,dstSRS=self.projection)
+        else:
+            o = gdal.Warp(temp_file.name,ds)
+        if o == None: #GDAL cannot open
+            filename = resource.res.descriptor["source"].split('"')[1]
+            varname = resource.res.descriptor["source"].split(":")[-1]
+            ds  = xr.open_dataset(filename)
+            var = ds.variables[varname].values
+            var.tofile(temp_file.name,sep=",")
+        self.write_file_to_output(temp_file.name, resource.res.source)
         return resource
 
 
@@ -144,7 +144,6 @@ class FileDumper(DumperBase):
                 return self.rows_processor(resource,
                                            writer,
                                            temp_file)
-
         else:
             return resource
 

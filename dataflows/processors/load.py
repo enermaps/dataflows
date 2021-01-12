@@ -248,12 +248,65 @@ class load(DataStreamProcessor):
                     wkt = ds.GetProjection()
                     proj = osr.SpatialReference(wkt=wkt)
                     descriptor['source'] = source
-                    # descriptor['wkt'] = ds.GetProjection()
-                    descriptor['epsg'] = proj.GetAttrValue('AUTHORITY',1)
-                    descriptor['format'] = self.options.get('format', "tif")
-                    descriptor['path'] = '{}_{}.{}'.format(self.name or path, variable, "tif")
-                    print(descriptor)
-                    self.resource_descriptors.append(descriptor)
+                    if proj.GetAttrValue('AUTHORITY',1) != None:
+                        # descriptor['wkt'] = ds.GetProjection()
+                        descriptor['epsg'] = proj.GetAttrValue('AUTHORITY',1)
+                        descriptor['format'] = self.options.get('format', "tif")
+                        descriptor['path'] = '{}_{}.{}'.format(self.name or path, variable, "tif")
+                        self.resource_descriptors.append(descriptor)
+                    else:
+                        descriptor['path'] = '{}_{}.{}'.format(self.name or path, variable, "txt")
+                        self.resource_descriptors.append(descriptor)
+                        # path = os.path.splitext(path)[0]
+                        # descriptor = dict(path=self.name or path,
+                        #                   profile='tabular-data-resource')
+                        # self.resource_descriptors.append(descriptor)
+                        # descriptor['name'] = self.name or path
+                        # if 'encoding' in self.options:
+                        #     descriptor['encoding'] = self.options['encoding']
+                        # self.options.setdefault('custom_parsers', {}).setdefault('xml', XMLParser)
+                        # self.options.setdefault('ignore_blank_headers', True)
+                        # self.options.setdefault('headers', 1)
+                        # import xarray as xr
+
+                        # ds  = xr.open_dataset(self.load_source)
+                        # var = ds.variables[variable].values.tostring().decode()
+                        # print(self.options)
+                        # print(var)
+                        # stream: Stream = Stream(var)
+                        # if len(stream.headers) != len(set(stream.headers)):
+                        #     if not self.deduplicate_headers:
+                        #         raise ValueError(
+                        #             'Found duplicate headers.' +
+                        #             'Use the `deduplicate_headers` flag (found headers=%r)' % stream.headers)
+                        #     stream.headers = self.rename_duplicate_headers(stream.headers)
+                        # schema = Schema().infer(
+                        #     stream.sample, headers=stream.headers,
+                        #     confidence=1, guesser_cls=self.guesser)
+                        # # restore schema field names to original headers
+                        # for header, field in zip(stream.headers, schema['fields']):
+                        #     field['name'] = header
+                        # if self.override_schema:
+                        #     schema.update(self.override_schema)
+                        # if self.override_fields:
+                        #     fields = schema.get('fields', [])
+                        #     for field in fields:
+                        #         field.update(self.override_fields.get(field['name'], {}))
+                        # if self.extract_missing_values:
+                        #     missing_values = schema.get('missingValues', [])
+                        #     if not self.extract_missing_values['values']:
+                        #         self.extract_missing_values['values'] = missing_values
+                        #     schema['fields'].append({
+                        #         'name': self.extract_missing_values['target'],
+                        #         'type': 'object',
+                        #         'format': 'default',
+                        #         'values': self.extract_missing_values['values'],
+                        #     })
+                        # descriptor['schema'] = schema
+                        # descriptor['format'] = self.options.get('format', stream.format)
+                        # descriptor['path'] += '.{}'.format(stream.format)
+                        # self.iterators.append(stream.iter(keyed=True))
+                        # descriptor['path'] = '{}_{}.{}'.format(self.name or path, variable, "txt")
 
             # Loading for any other source
             else:
@@ -278,8 +331,6 @@ class load(DataStreamProcessor):
                 schema = Schema().infer(
                     stream.sample, headers=stream.headers,
                     confidence=1, guesser_cls=self.guesser)
-                print("schema",schema)
-                print(descriptor)
                 # restore schema field names to original headers
                 for header, field in zip(stream.headers, schema['fields']):
                     field['name'] = header
@@ -303,8 +354,6 @@ class load(DataStreamProcessor):
                 descriptor['format'] = self.options.get('format', stream.format)
                 descriptor['path'] += '.{}'.format(stream.format)
                 self.iterators.append(stream.iter(keyed=True))
-                print(descriptor)
-                print(self.resource_descriptors)
         dp.descriptor.setdefault('resources', []).extend(self.resource_descriptors)
         return dp
 

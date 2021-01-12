@@ -251,8 +251,9 @@ class GeoTIFFFormat(FileFormat):
     def prepare_resource(cls, resource):
         descriptor = resource.descriptor
         basename, _ = os.path.splitext(resource.source)
-        descriptor['format'] = 'GeoTIFF'
-        descriptor['mediatype'] = 'image/tiff'
+        if "epsg" in resource.descriptor.keys():
+            descriptor['format'] = 'GeoTIFF'
+            descriptor['mediatype'] = 'image/tiff'
 
 
     def __transform_row(self, row):

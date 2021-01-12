@@ -38,3 +38,10 @@ def test_netcdf():
 
 # test_geotiff()
 test_netcdf()
+# import xarray as xr
+
+# ds  = xr.open_dataset("../data/NEWA-2009-12-30_100m_30min.nc")
+# import pandas as pd
+# print(ds.variables)
+# pd.DataFrame(ds.variables["Times"].values)
+# ds.to_array(dim="Times").to_pandas().to_csv("test.csv")

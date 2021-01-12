@@ -86,6 +86,7 @@ class DumperBase(DataStreamProcessor):
                                              **self.schema_validator_options)
                         )
             )
+
             ret = self.row_counter(resource, ret)
             yield ret
 
