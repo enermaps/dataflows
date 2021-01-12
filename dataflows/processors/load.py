@@ -232,6 +232,29 @@ class load(DataStreamProcessor):
                 descriptor['epsg'] = proj.GetAttrValue('AUTHORITY',1)
                 descriptor['format'] = self.options.get('format', "tif")
                 descriptor['path'] += '.{}'.format("tif")
+            if self.options.get('format') == 'NetCDF':
+                path = os.path.basename(self.load_source)
+                path = os.path.splitext(path)[0]
+                datasets = gdal.Open(self.load_source).GetSubDatasets()
+                for dataset in datasets:
+                    descriptor = dict(path=self.name or path,
+                                  profile='raster-data-resource')
+                    source = dataset[0]
+                    description = dataset[1]
+                    variable = source.split(":")[-1]
+                    descriptor['name'] = self.name or path
+                    descriptor['name'] += "_{}".format(variable)
+                    ds = gdal.Open(source)
+                    wkt = ds.GetProjection()
+                    proj = osr.SpatialReference(wkt=wkt)
+                    descriptor['source'] = source
+                    # descriptor['wkt'] = ds.GetProjection()
+                    descriptor['epsg'] = proj.GetAttrValue('AUTHORITY',1)
+                    descriptor['format'] = self.options.get('format', "tif")
+                    descriptor['path'] = '{}_{}.{}'.format(self.name or path, variable, "tif")
+                    print(descriptor)
+                    self.resource_descriptors.append(descriptor)
+
             # Loading for any other source
             else:
                 path = os.path.basename(self.load_source)

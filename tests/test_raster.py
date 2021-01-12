@@ -2,7 +2,7 @@ from dataflows import Flow, dump_to_path, load
 
 import os
 
-# Make sure to use the latest PROJ library (here in the dataflows environment)
+# Make sure to use the latest PROJ library (here in the rasterflows environment)
 os.environ["PROJ_LIB"] = "{}/opt/anaconda3/envs/rasterflows/share/proj/".format(
     os.path.expanduser("~")
 )
@@ -23,4 +23,18 @@ def test_geotiff():
     ).process()
 
 
-test_geotiff()
+def test_netcdf():
+    """
+    Test a netcdf dataflow.
+    """
+    Flow(
+        load(
+            "../data/NEWA-2009-12-30_100m_30min.nc",
+            format="NetCDF",
+        ),
+        dump_to_path("../out/NEWA-2009-12-30_100m_30min", format="geotiff"),
+    ).process()
+
+
+# test_geotiff()
+test_netcdf()
